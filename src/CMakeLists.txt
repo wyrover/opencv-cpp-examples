@@ -329,30 +329,30 @@ function(snippet number)
             snippet${number} 
             opencv_world412d.lib
             opencv_img_hash412d.lib
-            ade.lib
-            IlmImfd.lib
-            ippicvmt.lib
-            ippiwd.lib
-            ittnotifyd.lib
-            libjasperd.lib
-            libjpeg-turbod.lib
-            libpngd.lib
-            libprotobufd.lib
-            libtiffd.lib
-            libwebpd.lib
-            quircd.lib
-            zlibd.lib
-            mf
-            mfplat
-            mfreadwrite
-            mfuuid
-            shlwapi
-            wmcodecdspuuid
+#            ade.lib
+#            IlmImfd.lib
+#            ippicvmt.lib
+#            ippiwd.lib
+#            ittnotifyd.lib
+#            libjasperd.lib
+#            libjpeg-turbod.lib
+#            libpngd.lib
+#            libprotobufd.lib
+#            libtiffd.lib
+#            libwebpd.lib
+#            quircd.lib
+#            zlibd.lib
+#            mf
+#            mfplat
+#            mfreadwrite
+#            mfuuid
+#            shlwapi
+#            wmcodecdspuuid
         )
 
 
         target_link_directories(snippet${number} PRIVATE
-            D:/downloads/4.1.2/opencv-4.1.2/build/install/x86/vc15/debug/staticlib
+            D:/downloads/4.1.2/opencv-4.1.2/build/install/x86/vc15/debug/lib
         )
 
     elseif(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -413,7 +413,7 @@ endfunction()
 
 
 # 循环生成工程
-foreach(i RANGE 1 30)
+foreach(i RANGE 1 50)
     get_num(${i} number)
     snippet(${number})    
 endforeach(i)

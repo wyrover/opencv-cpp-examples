@@ -3226,3 +3226,1946 @@ int main()
 
 
 #endif
+
+
+#if SNIPPET030
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <iostream>
+
+using namespace cv;
+using namespace std;
+
+/* @brief 得到H分量的直方图图像
+@param src 输入图像
+@param histimg 输出颜色直方图
+@return void 返回值为空
+*/
+void getHistImg(const Mat src, Mat &histimg)
+{
+    Mat hue, hist;
+    int hsize = 16;//直方图bin的个数
+    float hranges[] = { 0, 180 };
+    const float* phranges = hranges;
+    int ch[] = { 0, 0 };
+    hue.create(src.size(), src.depth());
+    mixChannels(&src, 1, &hue, 1, ch, 1);//得到H分量
+    calcHist(&hue, 1, 0, Mat(), hist, 1, &hsize, &phranges);
+    normalize(hist, hist, 0, 255, NORM_MINMAX);
+    histimg = Scalar::all(0);
+    int binW = histimg.cols / hsize;
+    Mat buf(1, hsize, CV_8UC3);
+
+    for (int i = 0; i < hsize; i++)
+        buf.at<Vec3b>(i) = Vec3b(saturate_cast<uchar>(i * 180. / hsize), 255, 255);
+
+    cvtColor(buf, buf, COLOR_HSV2BGR);
+
+    for (int i = 0; i < hsize; i++) {
+        int val = saturate_cast<int>(hist.at<float>(i) * histimg.rows / 255);
+        rectangle(histimg, Point(i * binW, histimg.rows),
+                  Point((i + 1)*binW, histimg.rows - val),
+                  Scalar(buf.at<Vec3b>(i)), -1, 8);
+    }
+}
+
+int main(void)
+{
+    Mat src, histimg = Mat::zeros(540, 540, CV_8UC3);
+    // 载入图片
+    src = imread("001.jpg");
+
+    if (!src.data) {
+        cout << "load image failed" << endl;
+        return -1;
+    }
+
+    // 调用
+    getHistImg(src, histimg);
+    imshow("histImage", histimg);
+    imshow("srcImage", src);
+    waitKey(0);
+    return 0;
+}
+
+
+#endif
+
+
+#if SNIPPET031
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+#include <iostream>
+
+using namespace cv;
+using namespace std;
+
+
+int main()
+{
+    Mat Image = imread("001.jpg");
+    cvtColor(Image, Image, COLOR_BGR2GRAY);
+    const int channels[1] = { 0 };
+    const int histSize[1] = { 256 };
+    float hranges[2] = { 0, 255 };
+    const float* ranges[1] = { hranges };
+    MatND hist;
+    calcHist(&Image, 1, channels, Mat(), hist, 1, histSize, ranges);
+    imshow("img", Image);
+    imshow("hist", hist);
+    waitKey(0);
+    return 0;
+}
+
+
+
+#endif
+
+
+#if SNIPPET032
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <Windows.h>
+#include <iostream>
+#include <string>
+
+using namespace std;
+using namespace cv;
+
+Mat hwnd2mat(HWND hwnd)
+{
+    HDC hwindowDC, hwindowCompatibleDC;
+    int height, width, srcheight, srcwidth;
+    HBITMAP hbwindow;
+    Mat src;
+    BITMAPINFOHEADER  bi;
+    hwindowDC = GetDC(hwnd);
+    hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
+    SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
+    RECT windowsize;    // get the height and width of the screen
+    GetClientRect(hwnd, &windowsize);
+    srcheight = windowsize.bottom;
+    srcwidth = windowsize.right;
+    height = windowsize.bottom / 2;  //change this to whatever size you want to resize to
+    width = windowsize.right / 2;
+    src.create(height, width, CV_8UC4);
+    // create a bitmap
+    hbwindow = CreateCompatibleBitmap(hwindowDC, width, height);
+    bi.biSize = sizeof(BITMAPINFOHEADER);    //http://msdn.microsoft.com/en-us/library/windows/window/dd183402%28v=vs.85%29.aspx
+    bi.biWidth = width;
+    bi.biHeight = -height;  //this is the line that makes it draw upside down or not
+    bi.biPlanes = 1;
+    bi.biBitCount = 32;
+    bi.biCompression = BI_RGB;
+    bi.biSizeImage = 0;
+    bi.biXPelsPerMeter = 0;
+    bi.biYPelsPerMeter = 0;
+    bi.biClrUsed = 0;
+    bi.biClrImportant = 0;
+    // use the previously created device context with the bitmap
+    SelectObject(hwindowCompatibleDC, hbwindow);
+    // copy from the window device context to the bitmap device context
+    StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, 0, 0, srcwidth, srcheight, SRCCOPY); //change SRCCOPY to NOTSRCCOPY for wacky colors !
+    GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, src.data, (BITMAPINFO *)&bi, DIB_RGB_COLORS);  //copy from hwindowCompatibleDC to hbwindow
+    // avoid memory leak
+    DeleteObject(hbwindow);
+    DeleteDC(hwindowCompatibleDC);
+    ReleaseDC(hwnd, hwindowDC);
+    return src;
+}
+
+int main()
+{
+    Mat img = hwnd2mat(::GetDesktopWindow());
+    imshow("img", img);
+    waitKey(0);
+    return 0;
+}
+
+#endif
+
+
+#if SNIPPET033
+
+/*! 
+ * \brief 位图转 Mat
+ * 
+ * 位图转 Mat
+ * 
+ */
+
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <Windows.h>
+#include <iostream>
+#include <string>
+
+using namespace std;
+using namespace cv;
+
+int main()
+
+{
+    int x_size = 800, y_size = 600; // <-- Your res for the image
+    HBITMAP hBitmap; // <-- The image represented by hBitmap
+    Mat matBitmap; // <-- The image represented by mat
+    // Initialize DCs
+    HDC hdcSys = GetDC(NULL); // Get DC of the target capture..
+    HDC hdcMem = CreateCompatibleDC(hdcSys); // Create compatible DC
+    void *ptrBitmapPixels; // <-- Pointer variable that will contain the potinter for the pixels
+    // Create hBitmap with Pointer to the pixels of the Bitmap
+    BITMAPINFO bi;
+    HDC hdc;
+    ZeroMemory(&bi, sizeof(BITMAPINFO));
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = x_size;
+    bi.bmiHeader.biHeight = -y_size;  //negative so (0,0) is at top left
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    hdc = GetDC(NULL);
+    hBitmap = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &ptrBitmapPixels, NULL, 0);
+    // ^^ The output: hBitmap & ptrBitmapPixels
+    // Set hBitmap in the hdcMem
+    SelectObject(hdcMem, hBitmap);
+    // Set matBitmap to point to the pixels of the hBitmap
+    matBitmap = Mat(y_size, x_size, CV_8UC4, ptrBitmapPixels, 0);
+    //                ^^ note: first it is y, then it is x. very confusing
+    // * SETUP DONE *
+    // Now update the pixels using BitBlt
+    BitBlt(hdcMem, 0, 0, x_size, y_size, hdcSys, 0, 0, SRCCOPY);
+    // Just to do some image processing on the pixels.. (Dont have to to this)
+    Mat matRef = matBitmap(Range(100, 200), Range(100, 200));
+    //                              y1    y2            x1     x2
+    bitwise_not(matRef, matRef); // Invert the colors in this x1,x2,y1,y2
+    // Display the results through Mat
+    imshow("Title", matBitmap);
+    // Wait until some key is pressed
+    waitKey(0);
+    return 0;
+}
+
+#endif
+
+
+#if SNIPPET034
+
+/*! 
+ * \brief H-S二维直方图的绘制 
+ * 
+ * H-S二维直方图的绘制
+ * 
+ */
+
+
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+using namespace cv;
+
+
+
+//-----------------------------------【ShowHelpText( )函数】-----------------------------
+//		 描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第79个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+}
+
+
+//--------------------------------------【main( )函数】-----------------------------------------
+//          描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-----------------------------------------------------------------------------------------------
+int main()
+{
+
+    //【1】载入源图，转化为HSV颜色模型
+    Mat srcImage, hsvImage;
+    srcImage = imread("034.jpg");
+    cvtColor(srcImage, hsvImage, COLOR_BGR2HSV);
+
+    system("color 2F");
+    ShowHelpText();
+
+    //【2】参数准备
+    //将色调量化为30个等级，将饱和度量化为32个等级
+    int hueBinNum = 30;//色调的直方图直条数量
+    int saturationBinNum = 32;//饱和度的直方图直条数量
+    int histSize[] = { hueBinNum, saturationBinNum };
+    // 定义色调的变化范围为0到179
+    float hueRanges[] = { 0, 180 };
+    //定义饱和度的变化范围为0（黑、白、灰）到255（纯光谱颜色）
+    float saturationRanges[] = { 0, 256 };
+    const float* ranges[] = { hueRanges, saturationRanges };
+    MatND dstHist;
+    //参数准备，calcHist函数中将计算第0通道和第1通道的直方图
+    int channels[] = { 0, 1 };
+
+    //【3】正式调用calcHist，进行直方图计算
+    calcHist(&hsvImage,//输入的数组
+        1, //数组个数为1
+        channels,//通道索引
+        Mat(), //不使用掩膜
+        dstHist, //输出的目标直方图
+        2, //需要计算的直方图的维度为2
+        histSize, //存放每个维度的直方图尺寸的数组
+        ranges,//每一维数值的取值范围数组
+        true, // 指示直方图是否均匀的标识符，true表示均匀的直方图
+        false);//累计标识符，false表示直方图在配置阶段会被清零
+
+    //【4】为绘制直方图准备参数
+    double maxValue = 0;//最大值
+    minMaxLoc(dstHist, 0, &maxValue, 0, 0);//查找数组和子数组的全局最小值和最大值存入maxValue中
+    int scale = 10;
+    Mat histImg = Mat::zeros(saturationBinNum*scale, hueBinNum * 10, CV_8UC3);
+
+    //【5】双层循环，进行直方图绘制
+    for (int hue = 0; hue < hueBinNum; hue++)
+        for (int saturation = 0; saturation < saturationBinNum; saturation++)
+        {
+            float binValue = dstHist.at<float>(hue, saturation);//直方图组距的值
+            int intensity = cvRound(binValue * 255 / maxValue);//强度
+
+            //正式进行绘制
+            rectangle(histImg, Point(hue*scale, saturation*scale),
+                Point((hue + 1)*scale - 1, (saturation + 1)*scale - 1),
+                Scalar::all(intensity), FILLED);
+        }
+
+    //【6】显示效果图
+    imshow("素材图", srcImage);
+    imshow("H-S 直方图", histImg);
+
+    waitKey();
+}
+
+#endif
+
+
+#if SNIPPET035
+
+/*! 
+ * \brief 一维直方图的绘制
+ * 
+ * 一维直方图的绘制
+ * 
+ */
+
+
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
+using namespace cv;
+using namespace std;
+
+
+
+//-----------------------------------【ShowHelpText( )函数】-----------------------------
+//		 描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第80个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+}
+
+
+//--------------------------------------【main( )函数】-----------------------------------------
+//          描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-------------------------------------------------------------------------------------------------
+int main()
+{
+    //【1】载入原图并显示
+    Mat srcImage = imread("035.jpg", 0);
+    imshow("原图", srcImage);
+    if (!srcImage.data) { cout << "fail to load image" << endl; 	return 0; }
+
+    system("color 1F");
+    ShowHelpText();
+
+    //【2】定义变量
+    MatND dstHist;       // 在cv中用CvHistogram *hist = cvCreateHist
+    int dims = 1;
+    float hranges[] = { 0, 255 };
+    const float *ranges[] = { hranges };   // 这里需要为const类型
+    int size = 256;
+    int channels = 0;
+
+    //【3】计算图像的直方图
+    calcHist(&srcImage, 1, &channels, Mat(), dstHist, dims, &size, ranges);    // cv 中是cvCalcHist
+    int scale = 1;
+
+    Mat dstImage(size * scale, size, CV_8U, Scalar(0));
+    //【4】获取最大值和最小值
+    double minValue = 0;
+    double maxValue = 0;
+    minMaxLoc(dstHist, &minValue, &maxValue, 0, 0);  //  在cv中用的是cvGetMinMaxHistValue
+
+    //【5】绘制出直方图
+    int hpt = saturate_cast<int>(0.9 * size);
+    for (int i = 0; i < 256; i++)
+    {
+        float binValue = dstHist.at<float>(i);           //   注意hist中是float类型    而在OpenCV1.0版中用cvQueryHistValue_1D
+        int realValue = saturate_cast<int>(binValue * hpt / maxValue);
+        rectangle(dstImage, Point(i*scale, size - 1), Point((i + 1)*scale - 1, size - realValue), Scalar(255));
+    }
+    imshow("一维直方图", dstImage);
+    waitKey(0);
+    return 0;
+}
+
+#endif
+
+
+#if SNIPPET036
+
+/*! 
+ * \brief RGB三色直方图的绘制 
+ * 
+ * RGB三色直方图的绘制 
+ * 
+ */
+
+
+#include <opencv2/opencv.hpp>  
+#include <opencv2/imgproc/imgproc.hpp>  
+using namespace cv;
+
+
+
+//-----------------------------------【ShowHelpText( )函数】-----------------------------
+//		 描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第81个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+}
+
+
+//--------------------------------------【main( )函数】-----------------------------------------
+//          描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-----------------------------------------------------------------------------------------------
+int main()
+{
+
+    //【1】载入素材图并显示
+    Mat srcImage;
+    srcImage = imread("036.jpg");
+    imshow("素材图", srcImage);
+
+    system("color 3F");
+    ShowHelpText();
+
+    //【2】参数准备
+    int bins = 256;
+    int hist_size[] = { bins };
+    float range[] = { 0, 256 };
+    const float* ranges[] = { range };
+    MatND redHist, grayHist, blueHist;
+    int channels_r[] = { 0 };
+
+    //【3】进行直方图的计算（红色分量部分）
+    calcHist(&srcImage, 1, channels_r, Mat(), //不使用掩膜
+        redHist, 1, hist_size, ranges,
+        true, false);
+
+    //【4】进行直方图的计算（绿色分量部分）
+    int channels_g[] = { 1 };
+    calcHist(&srcImage, 1, channels_g, Mat(), // do not use mask
+        grayHist, 1, hist_size, ranges,
+        true, // the histogram is uniform
+        false);
+
+    //【5】进行直方图的计算（蓝色分量部分）
+    int channels_b[] = { 2 };
+    calcHist(&srcImage, 1, channels_b, Mat(), // do not use mask
+        blueHist, 1, hist_size, ranges,
+        true, // the histogram is uniform
+        false);
+
+    //-----------------------绘制出三色直方图------------------------
+    //参数准备
+    double maxValue_red, maxValue_green, maxValue_blue;
+    minMaxLoc(redHist, 0, &maxValue_red, 0, 0);
+    minMaxLoc(grayHist, 0, &maxValue_green, 0, 0);
+    minMaxLoc(blueHist, 0, &maxValue_blue, 0, 0);
+    int scale = 1;
+    int histHeight = 256;
+    Mat histImage = Mat::zeros(histHeight, bins * 3, CV_8UC3);
+
+    //正式开始绘制
+    for (int i = 0; i < bins; i++)
+    {
+        //参数准备
+        float binValue_red = redHist.at<float>(i);
+        float binValue_green = grayHist.at<float>(i);
+        float binValue_blue = blueHist.at<float>(i);
+        int intensity_red = cvRound(binValue_red*histHeight / maxValue_red);  //要绘制的高度
+        int intensity_green = cvRound(binValue_green*histHeight / maxValue_green);  //要绘制的高度
+        int intensity_blue = cvRound(binValue_blue*histHeight / maxValue_blue);  //要绘制的高度
+
+        //绘制红色分量的直方图
+        rectangle(histImage, Point(i*scale, histHeight - 1),
+            Point((i + 1)*scale - 1, histHeight - intensity_red),
+            Scalar(255, 0, 0));
+
+        //绘制绿色分量的直方图
+        rectangle(histImage, Point((i + bins)*scale, histHeight - 1),
+            Point((i + bins + 1)*scale - 1, histHeight - intensity_green),
+            Scalar(0, 255, 0));
+
+        //绘制蓝色分量的直方图
+        rectangle(histImage, Point((i + bins * 2)*scale, histHeight - 1),
+            Point((i + bins * 2 + 1)*scale - 1, histHeight - intensity_blue),
+            Scalar(0, 0, 255));
+
+    }
+
+    //在窗口中显示出绘制好的直方图
+    imshow("图像的RGB直方图", histImage);
+    waitKey(0);
+    return 0;
+}
+
+#endif
+
+
+#if SNIPPET037
+
+/*! 
+ * \brief 直方图对比 
+ * 
+ * 直方图对比
+ * 
+ */
+
+
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+using namespace cv;
+
+
+//-----------------------------------【ShowHelpText( )函数】-----------------------------
+//          描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+static void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第82个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+    //输出一些帮助信息
+    printf("\n\n欢迎来到【直方图对比】示例程序~\n\n");
+
+}
+
+
+//--------------------------------------【main( )函数】-----------------------------------------
+//          描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-----------------------------------------------------------------------------------------------
+int main()
+{
+    //【0】改变console字体颜色
+    system("color 2F");
+
+    //【1】显示帮助文字
+    ShowHelpText();
+
+    //【1】声明储存基准图像和另外两张对比图像的矩阵( RGB 和 HSV )
+    Mat srcImage_base, hsvImage_base;
+    Mat srcImage_test1, hsvImage_test1;
+    Mat srcImage_test2, hsvImage_test2;
+    Mat hsvImage_halfDown;
+
+    //【2】载入基准图像(srcImage_base) 和两张测试图像srcImage_test1、srcImage_test2，并显示
+    srcImage_base = imread("037_1.jpg", 1);
+    srcImage_test1 = imread("037_2.jpg", 1);
+    srcImage_test2 = imread("037_3.jpg", 1);
+    //显示载入的3张图像
+    imshow("基准图像", srcImage_base);
+    imshow("测试图像1", srcImage_test1);
+    imshow("测试图像2", srcImage_test2);
+
+    // 【3】将图像由BGR色彩空间转换到 HSV色彩空间
+    cvtColor(srcImage_base, hsvImage_base, COLOR_BGR2HSV);
+    cvtColor(srcImage_test1, hsvImage_test1, COLOR_BGR2HSV);
+    cvtColor(srcImage_test2, hsvImage_test2, COLOR_BGR2HSV);
+
+    //【4】创建包含基准图像下半部的半身图像(HSV格式)
+    hsvImage_halfDown = hsvImage_base(Range(hsvImage_base.rows / 2, hsvImage_base.rows - 1), Range(0, hsvImage_base.cols - 1));
+
+    //【5】初始化计算直方图需要的实参
+    // 对hue通道使用30个bin,对saturatoin通道使用32个bin
+    int h_bins = 50; int s_bins = 60;
+    int histSize[] = { h_bins, s_bins };
+    // hue的取值范围从0到256, saturation取值范围从0到180
+    float h_ranges[] = { 0, 256 };
+    float s_ranges[] = { 0, 180 };
+    const float* ranges[] = { h_ranges, s_ranges };
+    // 使用第0和第1通道
+    int channels[] = { 0, 1 };
+
+    // 【6】创建储存直方图的 MatND 类的实例:
+    MatND baseHist;
+    MatND halfDownHist;
+    MatND testHist1;
+    MatND testHist2;
+
+    // 【7】计算基准图像，两张测试图像，半身基准图像的HSV直方图:
+    calcHist(&hsvImage_base, 1, channels, Mat(), baseHist, 2, histSize, ranges, true, false);
+    normalize(baseHist, baseHist, 0, 1, NORM_MINMAX, -1, Mat());
+
+    calcHist(&hsvImage_halfDown, 1, channels, Mat(), halfDownHist, 2, histSize, ranges, true, false);
+    normalize(halfDownHist, halfDownHist, 0, 1, NORM_MINMAX, -1, Mat());
+
+    calcHist(&hsvImage_test1, 1, channels, Mat(), testHist1, 2, histSize, ranges, true, false);
+    normalize(testHist1, testHist1, 0, 1, NORM_MINMAX, -1, Mat());
+
+    calcHist(&hsvImage_test2, 1, channels, Mat(), testHist2, 2, histSize, ranges, true, false);
+    normalize(testHist2, testHist2, 0, 1, NORM_MINMAX, -1, Mat());
+
+
+    //【8】按顺序使用4种对比标准将基准图像的直方图与其余各直方图进行对比:
+    for (int i = 0; i < 4; i++)
+    {
+        //进行图像直方图的对比
+        int compare_method = i;
+        double base_base = compareHist(baseHist, baseHist, compare_method);
+        double base_half = compareHist(baseHist, halfDownHist, compare_method);
+        double base_test1 = compareHist(baseHist, testHist1, compare_method);
+        double base_test2 = compareHist(baseHist, testHist2, compare_method);
+        //输出结果
+        printf(" 方法 [%d] 的匹配结果如下：\n\n 【基准图 - 基准图】：%f, 【基准图 - 半身图】：%f,【基准图 - 测试图1】： %f, 【基准图 - 测试图2】：%f \n-----------------------------------------------------------------\n", i, base_base, base_half, base_test1, base_test2);
+    }
+
+    printf("检测结束。");
+    waitKey(0);
+    return 0;
+}
+
+
+#endif
+
+
+#if SNIPPET038
+
+/*! 
+ * \brief 反向投影 
+ * 
+ * 反向投影
+ * 
+ */
+
+
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/highgui/highgui.hpp"
+using namespace cv;
+
+
+//-----------------------------------【宏定义部分】-------------------------------------------- 
+//  描述：定义一些辅助宏 
+//------------------------------------------------------------------------------------------------ 
+#define WINDOW_NAME1 "【原始图】"        //为窗口标题定义的宏 
+
+
+//-----------------------------------【全局变量声明部分】--------------------------------------
+//          描述：全局变量声明
+//-----------------------------------------------------------------------------------------------
+Mat g_srcImage; Mat g_hsvImage; Mat g_hueImage;
+int g_bins = 30;//直方图组距
+
+//-----------------------------------【全局函数声明部分】--------------------------------------
+//          描述：全局函数声明
+//-----------------------------------------------------------------------------------------------
+static void ShowHelpText();
+void on_BinChange(int, void*);
+
+//--------------------------------------【main( )函数】-----------------------------------------
+//          描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-----------------------------------------------------------------------------------------------
+int main()
+{
+    //【0】改变console字体颜色
+    system("color 6F");
+
+    //【0】显示帮助文字
+    ShowHelpText();
+
+    //【1】读取源图像，并转换到 HSV 空间
+    g_srcImage = imread("038.jpg", 1);
+    if (!g_srcImage.data) { printf("读取图片错误，请确定目录下是否有imread函数指定图片存在~！ \n"); return false; }
+    cvtColor(g_srcImage, g_hsvImage, COLOR_BGR2HSV);
+
+    //【2】分离 Hue 色调通道
+    g_hueImage.create(g_hsvImage.size(), g_hsvImage.depth());
+    int ch[] = { 0, 0 };
+    mixChannels(&g_hsvImage, 1, &g_hueImage, 1, ch, 1);
+
+    //【3】创建 Trackbar 来输入bin的数目
+    namedWindow(WINDOW_NAME1, WINDOW_AUTOSIZE);
+    createTrackbar("色调组距 ", WINDOW_NAME1, &g_bins, 180, on_BinChange);
+    on_BinChange(0, 0);//进行一次初始化
+
+    //【4】显示效果图
+    imshow(WINDOW_NAME1, g_srcImage);
+
+    // 等待用户按键
+    waitKey(0);
+    return 0;
+}
+
+
+//-----------------------------------【on_HoughLines( )函数】--------------------------------
+//          描述：响应滑动条移动消息的回调函数
+//---------------------------------------------------------------------------------------------
+void on_BinChange(int, void*)
+{
+    //【1】参数准备
+    MatND hist;
+    int histSize = MAX(g_bins, 2);
+    float hue_range[] = { 0, 180 };
+    const float* ranges = { hue_range };
+
+    //【2】计算直方图并归一化
+    calcHist(&g_hueImage, 1, 0, Mat(), hist, 1, &histSize, &ranges, true, false);
+    normalize(hist, hist, 0, 255, NORM_MINMAX, -1, Mat());
+
+    //【3】计算反向投影
+    MatND backproj;
+    calcBackProject(&g_hueImage, 1, 0, hist, backproj, &ranges, 1, true);
+
+    //【4】显示反向投影
+    imshow("反向投影图", backproj);
+
+    //【5】绘制直方图的参数准备
+    int w = 400; int h = 400;
+    int bin_w = cvRound((double)w / histSize);
+    Mat histImg = Mat::zeros(w, h, CV_8UC3);
+
+    //【6】绘制直方图
+    for (int i = 0; i < g_bins; i++)
+    {
+        rectangle(histImg, Point(i*bin_w, h), Point((i + 1)*bin_w, h - cvRound(hist.at<float>(i)*h / 255.0)), Scalar(100, 123, 255), -1);
+    }
+
+    //【7】显示直方图窗口
+    imshow("直方图", histImg);
+}
+
+
+//-----------------------------------【ShowHelpText( )函数】----------------------------------
+//          描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+static void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第83个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+
+    //输出一些帮助信息
+    printf("\n\n\t欢迎来到【反向投影】示例程序\n\n");
+    printf("\n\t请调整滑动条观察图像效果\n\n");
+
+}
+
+#endif
+
+
+#if SNIPPET039
+
+/*! 
+ * \brief 模板匹配 
+ * 
+ * 模板匹配
+ * 
+ */
+
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+using namespace cv;
+
+
+//-----------------------------------【宏定义部分】-------------------------------------------- 
+//  描述：定义一些辅助宏 
+//------------------------------------------------------------------------------------------------ 
+#define WINDOW_NAME1 "【原始图片】"        //为窗口标题定义的宏 
+#define WINDOW_NAME2 "【匹配窗口】"        //为窗口标题定义的宏 
+
+//-----------------------------------【全局变量声明部分】------------------------------------
+//          描述：全局变量的声明
+//-----------------------------------------------------------------------------------------------
+Mat g_srcImage; Mat g_templateImage; Mat g_resultImage;
+int g_nMatchMethod;
+int g_nMaxTrackbarNum = 5;
+
+//-----------------------------------【全局函数声明部分】--------------------------------------
+//          描述：全局函数的声明
+//-----------------------------------------------------------------------------------------------
+void on_Matching(int, void*);
+static void ShowHelpText();
+
+
+//-----------------------------------【main( )函数】--------------------------------------------
+//          描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-----------------------------------------------------------------------------------------------
+int main()
+{
+    //【0】改变console字体颜色
+    system("color 1F");
+
+    //【0】显示帮助文字
+    ShowHelpText();
+
+    //【1】载入原图像和模板块
+    g_srcImage = imread("039_1.jpg", 1);
+    g_templateImage = imread("039_2.jpg", 1);
+
+    //【2】创建窗口
+    namedWindow(WINDOW_NAME1, WINDOW_AUTOSIZE);
+    namedWindow(WINDOW_NAME2, WINDOW_AUTOSIZE);
+
+    //【3】创建滑动条并进行一次初始化
+    createTrackbar("方法", WINDOW_NAME1, &g_nMatchMethod, g_nMaxTrackbarNum, on_Matching);
+    on_Matching(0, 0);
+
+    waitKey(0);
+    return 0;
+
+}
+
+//-----------------------------------【on_Matching( )函数】--------------------------------
+//          描述：回调函数
+//-------------------------------------------------------------------------------------------
+void on_Matching(int, void*)
+{
+    //【1】给局部变量初始化
+    Mat srcImage;
+    g_srcImage.copyTo(srcImage);
+
+    //【2】初始化用于结果输出的矩阵
+    int resultImage_rows = g_srcImage.rows - g_templateImage.rows + 1;
+    int resultImage_cols = g_srcImage.cols - g_templateImage.cols + 1;
+    g_resultImage.create(resultImage_rows, resultImage_cols, CV_32FC1);
+
+    //【3】进行匹配和标准化
+    matchTemplate(g_srcImage, g_templateImage, g_resultImage, g_nMatchMethod);
+    normalize(g_resultImage, g_resultImage, 0, 1, NORM_MINMAX, -1, Mat());
+
+    //【4】通过函数 minMaxLoc 定位最匹配的位置
+    double minValue; double maxValue; Point minLocation; Point maxLocation;
+    Point matchLocation;
+    minMaxLoc(g_resultImage, &minValue, &maxValue, &minLocation, &maxLocation, Mat());
+
+    //【5】对于方法 SQDIFF 和 SQDIFF_NORMED, 越小的数值有着更高的匹配结果. 而其余的方法, 数值越大匹配效果越好
+    //此句代码的OpenCV2版为：
+    //if( g_nMatchMethod  == CV_TM_SQDIFF || g_nMatchMethod == CV_TM_SQDIFF_NORMED )
+    //此句代码的OpenCV3版为：
+    if (g_nMatchMethod == TM_SQDIFF || g_nMatchMethod == TM_SQDIFF_NORMED)
+    {
+        matchLocation = minLocation;
+    }
+    else
+    {
+        matchLocation = maxLocation;
+    }
+
+    //【6】绘制出矩形，并显示最终结果
+    rectangle(srcImage, matchLocation, Point(matchLocation.x + g_templateImage.cols, matchLocation.y + g_templateImage.rows), Scalar(0, 0, 255), 2, 8, 0);
+    rectangle(g_resultImage, matchLocation, Point(matchLocation.x + g_templateImage.cols, matchLocation.y + g_templateImage.rows), Scalar(0, 0, 255), 2, 8, 0);
+
+    imshow(WINDOW_NAME1, srcImage);
+    imshow(WINDOW_NAME2, g_resultImage);
+
+}
+
+
+
+//-----------------------------------【ShowHelpText( )函数】----------------------------------
+//          描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+static void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第84个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+    //输出一些帮助信息
+    printf("\t欢迎来到【模板匹配】示例程序~\n");
+    printf("\n\n\t请调整滑动条观察图像效果\n\n");
+    printf("\n\t滑动条对应的方法数值说明: \n\n"
+        "\t\t方法【0】- 平方差匹配法(SQDIFF)\n"
+        "\t\t方法【1】- 归一化平方差匹配法(SQDIFF NORMED)\n"
+        "\t\t方法【2】- 相关匹配法(TM CCORR)\n"
+        "\t\t方法【3】- 归一化相关匹配法(TM CCORR NORMED)\n"
+        "\t\t方法【4】- 相关系数匹配法(TM COEFF)\n"
+        "\t\t方法【5】- 归一化相关系数匹配法(TM COEFF NORMED)\n");
+}
+
+
+#endif
+
+#if SNIPPET040
+
+/*! 
+ * \brief cornerHarris 函数用法示例 
+ * 
+ * cornerHarris 函数用法示例 
+ * 
+ */
+
+
+#include <opencv2/opencv.hpp>  
+#include <opencv2/imgproc/imgproc.hpp>  
+using namespace cv;
+
+int main()
+{
+    //以灰度模式载入图像并显示
+    Mat srcImage = imread("040.jpg", 0);
+    imshow("原始图", srcImage);
+
+    //进行Harris角点检测找出角点
+    Mat cornerStrength;
+    cornerHarris(srcImage, cornerStrength, 2, 3, 0.01);
+
+    //对灰度图进行阈值操作，得到二值图并显示  
+    Mat harrisCorner;
+    threshold(cornerStrength, harrisCorner, 0.00001, 255, THRESH_BINARY);
+    imshow("角点检测后的二值效果图", harrisCorner);
+
+    waitKey(0);
+    return 0;
+}
+
+#endif
+
+
+#if SNIPPET041
+
+#include <opencv2/opencv.hpp>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+using namespace cv;
+using namespace std;
+
+
+//-----------------------------------【宏定义部分】--------------------------------------------  
+//  描述：定义一些辅助宏  
+//------------------------------------------------------------------------------------------------  
+#define WINDOW_NAME1 "【程序窗口1】"        //为窗口标题定义的宏  
+#define WINDOW_NAME2 "【程序窗口2】"        //为窗口标题定义的宏  
+
+//-----------------------------------【全局变量声明部分】--------------------------------------
+//		描述：全局变量声明
+//-----------------------------------------------------------------------------------------------
+Mat g_srcImage, g_srcImage1, g_grayImage;
+int thresh = 30; //当前阈值
+int max_thresh = 175; //最大阈值
+
+
+//-----------------------------------【全局函数声明部分】--------------------------------------
+//		描述：全局函数声明
+//-----------------------------------------------------------------------------------------------
+void on_CornerHarris(int, void*);//回调函数
+static void ShowHelpText();
+
+//-----------------------------------【main( )函数】--------------------------------------------
+//		描述：控制台应用程序的入口函数，我们的程序从这里开始执行
+//-----------------------------------------------------------------------------------------------
+int main(int argc, char** argv)
+{
+    //【0】改变console字体颜色
+    system("color 3F");
+
+    //【0】显示帮助文字
+    ShowHelpText();
+
+    //【1】载入原始图并进行克隆保存
+    g_srcImage = imread("041.jpg", 1);
+    if (!g_srcImage.data) { printf("读取图片错误，请确定目录下是否有imread函数指定的图片存在~！ \n"); return false; }
+    imshow("原始图", g_srcImage);
+    g_srcImage1 = g_srcImage.clone();
+
+    //【2】存留一张灰度图
+    cvtColor(g_srcImage1, g_grayImage, COLOR_BGR2GRAY);
+
+    //【3】创建窗口和滚动条
+    namedWindow(WINDOW_NAME1, WINDOW_AUTOSIZE);
+    createTrackbar("阈值: ", WINDOW_NAME1, &thresh, max_thresh, on_CornerHarris);
+
+    //【4】调用一次回调函数，进行初始化
+    on_CornerHarris(0, 0);
+
+    waitKey(0);
+    return(0);
+}
+
+//-----------------------------------【on_HoughLines( )函数】--------------------------------
+//		描述：回调函数
+//----------------------------------------------------------------------------------------------
+
+void on_CornerHarris(int, void*)
+{
+    //---------------------------【1】定义一些局部变量-----------------------------
+    Mat dstImage;//目标图
+    Mat normImage;//归一化后的图
+    Mat scaledImage;//线性变换后的八位无符号整型的图
+
+    //---------------------------【2】初始化---------------------------------------
+    //置零当前需要显示的两幅图，即清除上一次调用此函数时他们的值
+    dstImage = Mat::zeros(g_srcImage.size(), CV_32FC1);
+    g_srcImage1 = g_srcImage.clone();
+
+    //---------------------------【3】正式检测-------------------------------------
+    //进行角点检测
+    cornerHarris(g_grayImage, dstImage, 2, 3, 0.04, BORDER_DEFAULT);
+
+    // 归一化与转换
+    normalize(dstImage, normImage, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
+    convertScaleAbs(normImage, scaledImage);//将归一化后的图线性变换成8位无符号整型 
+
+    //---------------------------【4】进行绘制-------------------------------------
+    // 将检测到的，且符合阈值条件的角点绘制出来
+    for (int j = 0; j < normImage.rows; j++)
+    {
+        for (int i = 0; i < normImage.cols; i++)
+        {
+            if ((int)normImage.at<float>(j, i) > thresh + 80)
+            {
+                circle(g_srcImage1, Point(i, j), 5, Scalar(10, 10, 255), 2, 8, 0);
+                circle(scaledImage, Point(i, j), 5, Scalar(0, 10, 255), 2, 8, 0);
+            }
+        }
+    }
+    //---------------------------【4】显示最终效果---------------------------------
+    imshow(WINDOW_NAME1, g_srcImage1);
+    imshow(WINDOW_NAME2, scaledImage);
+
+}
+
+//-----------------------------------【ShowHelpText( )函数】----------------------------------
+//		描述：输出一些帮助信息
+//----------------------------------------------------------------------------------------------
+static void ShowHelpText()
+{
+    //输出欢迎信息和OpenCV版本
+    printf("\n\n\t\t\t非常感谢购买《OpenCV3编程入门》一书！\n");
+    printf("\n\n\t\t\t此为本书OpenCV3版的第86个配套示例程序\n");
+    printf("\n\n\t\t\t   当前使用的OpenCV版本为：" CV_VERSION);
+    printf("\n\n  ----------------------------------------------------------------------------\n");
+    //输出一些帮助信息
+    printf("\n\n\n\t【欢迎来到Harris角点检测示例程序~】\n\n");
+    printf("\n\t请调整滚动条观察图像效果~\n\n");
+}
+
+#endif
+
+
+#if SNIPPET042
+
+#include <vector>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+
+int main()
+{
+    cv::Mat image1;
+    cv::Mat image2;
+
+    // open images
+    image1 = cv::imread("boldt.jpg");
+    image2 = cv::imread("rain.jpg");
+    if (!image1.data)
+        return 0;
+    if (!image2.data)
+        return 0;
+
+    cv::namedWindow("Image 1");
+    cv::imshow("Image 1", image1);
+    cv::namedWindow("Image 2");
+    cv::imshow("Image 2", image2);
+
+    cv::Mat result;
+    // add two images
+    cv::addWeighted(image1, 0.7, image2, 0.9, 0., result);
+
+    cv::namedWindow("result");
+    cv::imshow("result", result);
+
+    // using overloaded operator
+    result = 0.7*image1 + 0.9*image2;
+
+    cv::namedWindow("result with operators");
+    cv::imshow("result with operators", result);
+
+    image2 = cv::imread("rain.jpg", 0);
+
+    // create vector of 3 images
+    std::vector<cv::Mat> planes;
+    // split 1 3-channel image into 3 1-channel images
+    cv::split(image1, planes);
+    // add to blue channel
+    planes[0] += image2;
+    // merge the 3 1-channel images into 1 3-channel image
+    cv::merge(planes, result);
+
+    cv::namedWindow("Result on blue channel");
+    cv::imshow("Result on blue channel", result);
+
+    cv::waitKey();
+
+    return 0;
+}
+
+
+
+#endif
+
+
+#if SNIPPET043
+
+#include <iostream>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+// 1st version
+// see recipe Scanning an image with pointers
+void colorReduce(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols * image.channels(); // total number of elements per line
+
+    for (int j = 0; j < nl; j++) {
+
+        // get the address of row j
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            data[i] = data[i] / div * div + div / 2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// version with input/ouput images
+// see recipe Scanning an image with pointers
+void colorReduceIO(const cv::Mat &image, // input image
+    cv::Mat &result,      // output image
+    int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols; // number of columns
+    int nchannels = image.channels(); // number of channels
+
+    // allocate output image if necessary
+    result.create(image.rows, image.cols, image.type());
+
+    for (int j = 0; j < nl; j++) {
+
+        // get the addresses of input and output row j
+        const uchar* data_in = image.ptr<uchar>(j);
+        uchar* data_out = result.ptr<uchar>(j);
+
+        for (int i = 0; i < nc*nchannels; i++) {
+
+            // process each pixel ---------------------
+
+            data_out[i] = data_in[i] / div * div + div / 2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// Test 1
+// this version uses the dereference operator *
+void colorReduce1(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols * image.channels(); // total number of elements per line
+    uchar div2 = div >> 1; // div2 = div/2
+
+    for (int j = 0; j < nl; j++) {
+
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < nc; i++) {
+
+
+            // process each pixel ---------------------
+
+            *data++ = *data / div * div + div2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// Test 2
+// this version uses the modulo operator
+void colorReduce2(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols * image.channels(); // total number of elements per line
+    uchar div2 = div >> 1; // div2 = div/2
+
+    for (int j = 0; j < nl; j++) {
+
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            int v = *data;
+            *data++ = v - v % div + div2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// Test 3
+// this version uses a binary mask
+void colorReduce3(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols * image.channels(); // total number of elements per line
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+    uchar div2 = 1 << (n - 1); // div2 = div/2
+
+    for (int j = 0; j < nl; j++) {
+
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            *data &= mask;     // masking
+            *data++ |= div2;   // add div/2
+
+          // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+
+// Test 4
+// this version uses direct pointer arithmetic with a binary mask
+void colorReduce4(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols * image.channels(); // total number of elements per line
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    int step = image.step; // effective width
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+    uchar div2 = div >> 1; // div2 = div/2
+
+    // get the pointer to the image buffer
+    uchar *data = image.data;
+
+    for (int j = 0; j < nl; j++) {
+
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            *(data + i) &= mask;
+            *(data + i) += div2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+
+        data += step;  // next line
+    }
+}
+
+// Test 5
+// this version recomputes row size each time
+void colorReduce5(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+
+    for (int j = 0; j < nl; j++) {
+
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < image.cols * image.channels(); i++) {
+
+            // process each pixel ---------------------
+
+            *data &= mask;
+            *data++ += div / 2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// Test 6
+// this version optimizes the case of continuous image
+void colorReduce6(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols * image.channels(); // total number of elements per line
+
+    if (image.isContinuous()) {
+        // then no padded pixels
+        nc = nc * nl;
+        nl = 1;  // it is now a 1D array
+    }
+
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+    uchar div2 = div >> 1; // div2 = div/2
+
+   // this loop is executed only once
+   // in case of continuous images
+    for (int j = 0; j < nl; j++) {
+
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            *data &= mask;
+            *data++ += div2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// Test 7
+// this versions applies reshape on continuous image
+void colorReduce7(cv::Mat image, int div = 64) {
+
+    if (image.isContinuous()) {
+        // no padded pixels
+        image.reshape(1,   // new number of channels
+            1); // new number of rows
+    }
+    // number of columns set accordingly
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols*image.channels(); // number of columns
+
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+    uchar div2 = div >> 1; // div2 = div/2
+
+    for (int j = 0; j < nl; j++) {
+
+        uchar* data = image.ptr<uchar>(j);
+
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            *data &= mask;
+            *data++ += div2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+// Test 8
+// this version processes the 3 channels inside the loop with Mat_ iterators
+void colorReduce8(cv::Mat image, int div = 64) {
+
+    // get iterators
+    cv::Mat_<cv::Vec3b>::iterator it = image.begin<cv::Vec3b>();
+    cv::Mat_<cv::Vec3b>::iterator itend = image.end<cv::Vec3b>();
+    uchar div2 = div >> 1; // div2 = div/2
+
+    for (; it != itend; ++it) {
+
+        // process each pixel ---------------------
+
+        (*it)[0] = (*it)[0] / div * div + div2;
+        (*it)[1] = (*it)[1] / div * div + div2;
+        (*it)[2] = (*it)[2] / div * div + div2;
+
+        // end of pixel processing ----------------
+    }
+}
+
+// Test 9
+// this version uses iterators on Vec3b
+void colorReduce9(cv::Mat image, int div = 64) {
+
+    // get iterators
+    cv::MatIterator_<cv::Vec3b> it = image.begin<cv::Vec3b>();
+    cv::MatIterator_<cv::Vec3b> itend = image.end<cv::Vec3b>();
+
+    const cv::Vec3b offset(div / 2, div / 2, div / 2);
+
+    for (; it != itend; ++it) {
+
+        // process each pixel ---------------------
+
+        *it = *it / div * div + offset;
+        // end of pixel processing ----------------
+    }
+}
+
+// Test 10
+// this version uses iterators with a binary mask
+void colorReduce10(cv::Mat image, int div = 64) {
+
+    // div must be a power of 2
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+    uchar div2 = div >> 1; // div2 = div/2
+
+    // get iterators
+    cv::Mat_<cv::Vec3b>::iterator it = image.begin<cv::Vec3b>();
+    cv::Mat_<cv::Vec3b>::iterator itend = image.end<cv::Vec3b>();
+
+    // scan all pixels
+    for (; it != itend; ++it) {
+
+        // process each pixel ---------------------
+
+        (*it)[0] &= mask;
+        (*it)[0] += div2;
+        (*it)[1] &= mask;
+        (*it)[1] += div2;
+        (*it)[2] &= mask;
+        (*it)[2] += div2;
+
+        // end of pixel processing ----------------
+    }
+}
+
+// Test 11
+// this versions uses ierators from Mat_ 
+void colorReduce11(cv::Mat image, int div = 64) {
+
+    // get iterators
+    cv::Mat_<cv::Vec3b> cimage = image;
+    cv::Mat_<cv::Vec3b>::iterator it = cimage.begin();
+    cv::Mat_<cv::Vec3b>::iterator itend = cimage.end();
+    uchar div2 = div >> 1; // div2 = div/2
+
+    for (; it != itend; it++) {
+
+        // process each pixel ---------------------
+
+        (*it)[0] = (*it)[0] / div * div + div2;
+        (*it)[1] = (*it)[1] / div * div + div2;
+        (*it)[2] = (*it)[2] / div * div + div2;
+
+        // end of pixel processing ----------------
+    }
+}
+
+
+// Test 12
+// this version uses the at method
+void colorReduce12(cv::Mat image, int div = 64) {
+
+    int nl = image.rows; // number of lines
+    int nc = image.cols; // number of columns
+    uchar div2 = div >> 1; // div2 = div/2
+
+    for (int j = 0; j < nl; j++) {
+        for (int i = 0; i < nc; i++) {
+
+            // process each pixel ---------------------
+
+            image.at<cv::Vec3b>(j, i)[0] = image.at<cv::Vec3b>(j, i)[0] / div * div + div2;
+            image.at<cv::Vec3b>(j, i)[1] = image.at<cv::Vec3b>(j, i)[1] / div * div + div2;
+            image.at<cv::Vec3b>(j, i)[2] = image.at<cv::Vec3b>(j, i)[2] / div * div + div2;
+
+            // end of pixel processing ----------------
+
+        } // end of line
+    }
+}
+
+
+// Test 13
+// this version uses Mat overloaded operators
+void colorReduce13(cv::Mat image, int div = 64) {
+
+    int n = static_cast<int>(log(static_cast<double>(div)) / log(2.0) + 0.5);
+    // mask used to round the pixel value
+    uchar mask = 0xFF << n; // e.g. for div=16, mask= 0xF0
+
+    // perform color reduction
+    image = (image&cv::Scalar(mask, mask, mask)) + cv::Scalar(div / 2, div / 2, div / 2);
+}
+
+// Test 14
+// this version uses a look up table
+void colorReduce14(cv::Mat image, int div = 64) {
+
+    cv::Mat lookup(1, 256, CV_8U);
+
+    for (int i = 0; i < 256; i++) {
+
+        lookup.at<uchar>(i) = i / div * div + div / 2;
+    }
+
+    cv::LUT(image, lookup, image);
+}
+
+#define NTESTS 15
+#define NITERATIONS 10
+
+int main()
+{
+    // read the image
+    cv::Mat image = cv::imread("boldt.jpg");
+
+    // time and process the image
+    const int64 start = cv::getTickCount();
+    colorReduce(image, 64);
+    //Elapsed time in seconds
+    double duration = (cv::getTickCount() - start) / cv::getTickFrequency();
+
+    // display the image
+    std::cout << "Duration= " << duration << "secs" << std::endl;
+    cv::namedWindow("Image");
+    cv::imshow("Image", image);
+
+    cv::waitKey();
+
+    // test different versions of the function
+
+    int64 t[NTESTS], tinit;
+    // timer values set to 0
+    for (int i = 0; i < NTESTS; i++)
+        t[i] = 0;
+
+    cv::Mat images[NTESTS];
+    cv::Mat result;
+
+    // the versions to be tested
+    typedef void(*FunctionPointer)(cv::Mat, int);
+    FunctionPointer functions[NTESTS] = { colorReduce, colorReduce1, colorReduce2, colorReduce3, colorReduce4,
+                                          colorReduce5, colorReduce6, colorReduce7, colorReduce8, colorReduce9,
+                                          colorReduce10, colorReduce11, colorReduce12, colorReduce13, colorReduce14 };
+    // repeat the tests several times
+    int n = NITERATIONS;
+    for (int k = 0; k < n; k++) {
+
+        std::cout << k << " of " << n << std::endl;
+
+        // test each version
+        for (int c = 0; c < NTESTS; c++) {
+
+            images[c] = cv::imread("boldt.jpg");
+
+            // set timer and call function
+            tinit = cv::getTickCount();
+            functions[c](images[c], 64);
+            t[c] += cv::getTickCount() - tinit;
+
+            std::cout << ".";
+        }
+
+        std::cout << std::endl;
+    }
+
+    // short description of each function
+    std::string descriptions[NTESTS] = {
+        "original version:",
+        "with dereference operator:",
+        "using modulo operator:",
+        "using a binary mask:",
+        "direct ptr arithmetic:",
+        "row size recomputation:",
+        "continuous image:",
+        "reshape continuous image:",
+        "with iterators:",
+        "Vec3b iterators:",
+        "iterators and mask:",
+        "iterators from Mat_:",
+        "at method:",
+        "overloaded operators:",
+        "look-up table:",
+    };
+
+    for (int i = 0; i < NTESTS; i++) {
+
+        cv::namedWindow(descriptions[i]);
+        cv::imshow(descriptions[i], images[i]);
+    }
+
+    // print average execution time
+    std::cout << std::endl << "-------------------------------------------" << std::endl << std::endl;
+    for (int i = 0; i < NTESTS; i++) {
+
+        std::cout << i << ". " << descriptions[i] << 1000.*t[i] / cv::getTickFrequency() / n << "ms" << std::endl;
+    }
+
+    cv::waitKey();
+    return 0;
+}
+
+#endif
+
+#if SNIPPET044
+
+#include <iostream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+
+int main()
+{
+    // Read input image
+    cv::Mat image = cv::imread("boldt.jpg");
+    if (!image.data)
+        return 0;
+
+    // Display the image
+    cv::namedWindow("Original Image");
+    cv::imshow("Original Image", image);
+
+    // define bounding rectangle 
+    cv::Rect rectangle(50, 25, 210, 180);
+    // the models (internally used)
+    cv::Mat bgModel, fgModel;
+    // segmentation result
+    cv::Mat result; // segmentation (4 possible values)
+
+    // GrabCut segmentation
+    cv::grabCut(image,    // input image
+        result,   // segmentation result
+        rectangle,// rectangle containing foreground 
+        bgModel, fgModel, // models
+        5,        // number of iterations
+        cv::GC_INIT_WITH_RECT); // use rectangle
+
+    // Get the pixels marked as likely foreground
+    cv::compare(result, cv::GC_PR_FGD, result, cv::CMP_EQ);
+    // or:
+    //	result= result&1;
+
+    // create a white image
+    cv::Mat foreground(image.size(), CV_8UC3,
+        cv::Scalar(255, 255, 255));
+
+    image.copyTo(foreground, result); // bg pixels not copied
+
+    // draw rectangle on original image
+    cv::rectangle(image, rectangle, cv::Scalar(255, 255, 255), 1);
+    cv::namedWindow("Image with rectangle");
+    cv::imshow("Image with rectangle", image);
+
+    // display result
+    cv::namedWindow("Foreground object");
+    cv::imshow("Foreground object", foreground);
+
+    cv::waitKey();
+    return 0;
+}
+
+
+#endif
+
+
+#if SNIPPET045
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
+#include <iostream>
+#include <vector>
+
+void detectHScolor(const cv::Mat& image,		// input image 
+    double minHue, double maxHue,	// Hue interval 
+    double minSat, double maxSat,	// saturation interval
+    cv::Mat& mask) {				// output mask
+
+    // convert into HSV space
+    cv::Mat hsv;
+    cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
+
+    // split the 3 channels into 3 images
+    std::vector<cv::Mat> channels;
+    cv::split(hsv, channels);
+    // channels[0] is the Hue
+    // channels[1] is the Saturation
+    // channels[2] is the Value
+
+    // Hue masking
+    cv::Mat mask1; // below maxHue
+    cv::threshold(channels[0], mask1, maxHue, 255, cv::THRESH_BINARY_INV);
+    cv::Mat mask2; // over minHue
+    cv::threshold(channels[0], mask2, minHue, 255, cv::THRESH_BINARY);
+
+    cv::Mat hueMask; // hue mask
+    if (minHue < maxHue)
+        hueMask = mask1 & mask2;
+    else // if interval crosses the zero-degree axis
+        hueMask = mask1 | mask2;
+
+    // Saturation masking
+    // below maxSat
+    cv::threshold(channels[1], mask1, maxSat, 255, cv::THRESH_BINARY_INV);
+    // over minSat
+    cv::threshold(channels[1], mask2, minSat, 255, cv::THRESH_BINARY);
+
+    cv::Mat satMask; // saturation mask
+    satMask = mask1 & mask2;
+
+    // combined mask
+    mask = hueMask & satMask;
+}
+
+int main()
+{
+    // read the image
+    cv::Mat image = cv::imread("boldt.jpg");
+    if (!image.data)
+        return 0;
+
+    // show original image
+    cv::namedWindow("Original image");
+    cv::imshow("Original image", image);
+
+    // convert into HSV space
+    cv::Mat hsv;
+    cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
+
+    // split the 3 channels into 3 images
+    std::vector<cv::Mat> channels;
+    cv::split(hsv, channels);
+    // channels[0] is the Hue
+    // channels[1] is the Saturation
+    // channels[2] is the Value
+
+    // display value
+    cv::namedWindow("Value");
+    cv::imshow("Value", channels[2]);
+
+    // display saturation
+    cv::namedWindow("Saturation");
+    cv::imshow("Saturation", channels[1]);
+
+    // display hue
+    cv::namedWindow("Hue");
+    cv::imshow("Hue", channels[0]);
+
+    // image with fixed value
+    cv::Mat newImage;
+    cv::Mat tmp(channels[2].clone());
+    // Value channel will be 255 for all pixels
+    channels[2] = 255;
+    // merge back the channels
+    cv::merge(channels, hsv);
+    // re-convert to BGR
+    cv::cvtColor(hsv, newImage, cv::COLOR_HSV2BGR);
+
+    cv::namedWindow("Fixed Value Image");
+    cv::imshow("Fixed Value Image", newImage);
+
+    // image with fixed saturation
+    channels[1] = 255;
+    channels[2] = tmp;
+    cv::merge(channels, hsv);
+    cv::cvtColor(hsv, newImage, cv::COLOR_HSV2BGR);
+
+    cv::namedWindow("Fixed saturation");
+    cv::imshow("Fixed saturation", newImage);
+
+    // image with fixed value and fixed saturation
+    channels[1] = 255;
+    channels[2] = 255;
+    cv::merge(channels, hsv);
+    cv::cvtColor(hsv, newImage, cv::COLOR_HSV2BGR);
+
+    cv::namedWindow("Fixed saturation/value");
+    cv::imshow("Fixed saturation/value", newImage);
+
+    // artificial image shown the all possible HS colors
+    cv::Mat hs(128, 360, CV_8UC3);
+    for (int h = 0; h < 360; h++) {
+        for (int s = 0; s < 128; s++) {
+            hs.at<cv::Vec3b>(s, h)[0] = h / 2;     // all hue angles
+            hs.at<cv::Vec3b>(s, h)[1] = 255 - s * 2; // from high saturation to low
+            hs.at<cv::Vec3b>(s, h)[2] = 255;     // constant value
+        }
+    }
+
+    cv::cvtColor(hs, newImage, cv::COLOR_HSV2BGR);
+
+    cv::namedWindow("Hue/Saturation");
+    cv::imshow("Hue/Saturation", newImage);
+
+    // Testing skin detection
+
+    // read the image
+    image = cv::imread("girl.jpg");
+    if (!image.data)
+        return 0;
+
+    // show original image
+    cv::namedWindow("Original image");
+    cv::imshow("Original image", image);
+
+    // detect skin tone
+    cv::Mat mask;
+    detectHScolor(image,
+        160, 10, // hue from 320 degrees to 20 degrees 
+        25, 166, // saturation from ~0.1 to 0.65
+        mask);
+
+    // show masked image
+    cv::Mat detected(image.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+    image.copyTo(detected, mask);
+    cv::imshow("Detection result", detected);
+
+    // A test comparing luminance and brightness
+
+    // create linear intensity image
+    cv::Mat linear(100, 256, CV_8U);
+    for (int i = 0; i < 256; i++) {
+
+        linear.col(i) = i;
+    }
+
+    // create a Lab image
+    linear.copyTo(channels[0]);
+    cv::Mat constante(100, 256, CV_8U, cv::Scalar(128));
+    constante.copyTo(channels[1]);
+    constante.copyTo(channels[2]);
+    cv::merge(channels, image);
+
+    // convert back to BGR
+    cv::Mat brightness;
+    cv::cvtColor(image, brightness, cv::COLOR_Lab2BGR);
+    cv::split(brightness, channels);
+
+    // create combined image
+    cv::Mat combined(200, 256, CV_8U);
+    cv::Mat half1(combined, cv::Rect(0, 0, 256, 100));
+    linear.copyTo(half1);
+    cv::Mat half2(combined, cv::Rect(0, 100, 256, 100));
+    channels[0].copyTo(half2);
+
+    cv::namedWindow("Luminance vs Brightness");
+    cv::imshow("Luminance vs Brightness", combined);
+
+    cv::waitKey();
+}
+
+#endif
+
+#if SNIPPET046
+
+#include "opencv2/opencv.hpp"
+
+using namespace cv;
+using namespace std;
+
+int main(int argc, char** argv)
+{
+
+    // Read image 
+    Mat src = imread("threshold.png", IMREAD_GRAYSCALE);
+    Mat dst;
+
+    {
+        // Basic threhold example 
+        threshold(src, dst, 0, 255, THRESH_BINARY);
+        imshow("opencv-threshold-example.jpg", dst);
+    }
+
+    {
+        // Thresholding with maxval set to 128
+        threshold(src, dst, 0, 128, THRESH_BINARY);
+        imshow("opencv-thresh-binary-maxval.jpg", dst);
+    }
+
+    {
+        // Thresholding with threshold value set 127 
+        threshold(src, dst, 127, 255, THRESH_BINARY);
+        imshow("opencv-thresh-binary.jpg", dst);
+    }
+
+    {
+        // Thresholding using THRESH_BINARY_INV 
+        threshold(src, dst, 127, 255, THRESH_BINARY_INV);
+        imshow("opencv-thresh-binary-inv.jpg", dst);
+    }
+
+    {
+        // Thresholding using THRESH_TRUNC 
+        threshold(src, dst, 127, 255, THRESH_TRUNC);
+        imshow("opencv-thresh-trunc.jpg", dst);
+    }
+
+    {
+        // Thresholding using THRESH_TOZERO 
+        threshold(src, dst, 127, 255, THRESH_TOZERO);
+        imshow("opencv-thresh-tozero.jpg", dst);
+    }
+
+    {
+        // Thresholding using THRESH_TOZERO_INV 
+        threshold(src, dst, 127, 255, THRESH_TOZERO_INV);
+        imshow("opencv-thresh-to-zero-inv.jpg", dst);
+    }
+
+    cv::waitKey(0);
+}
+
+
+#endif
