@@ -35,26 +35,26 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 # 通用的 include 路径
 #include_directories( "${CMAKE_CURRENT_SOURCE_DIR}/123" "${CMAKE_CURRENT_SOURCE_DIR}/456" )
 
-if(MSVC)
-    foreach(flag
-            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-        if(${flag} MATCHES "/MD")
-            string(REGEX REPLACE "/MD" "/MT" ${flag} "${${flag}}")
-        endif()
-    endforeach()
-
-    foreach(flag
-            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-        if(${flag} MATCHES "/MD")
-            string(REGEX REPLACE "/MD" "/MT" ${flag} "${${flag}}")
-        endif()
-    endforeach()
-
-    # 预定义宏
-    add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
-endif()
+#if(MSVC)
+#    foreach(flag
+#            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+#            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+#        if(${flag} MATCHES "/MD")
+#            string(REGEX REPLACE "/MD" "/MT" ${flag} "${${flag}}")
+#        endif()
+#    endforeach()
+#
+#    foreach(flag
+#            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+#            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+#        if(${flag} MATCHES "/MD")
+#            string(REGEX REPLACE "/MD" "/MT" ${flag} "${${flag}}")
+#        endif()
+#    endforeach()
+#
+#    # 预定义宏
+#    add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
+#endif()
 
 
 add_subdirectory(src)

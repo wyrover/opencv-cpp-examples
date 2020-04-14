@@ -413,7 +413,7 @@ endfunction()
 
 
 # 循环生成工程
-foreach(i RANGE 1 50)
+foreach(i RANGE 1 70)
     get_num(${i} number)
     snippet(${number})    
 endforeach(i)

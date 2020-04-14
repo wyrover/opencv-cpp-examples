@@ -5169,3 +5169,586 @@ int main(int argc, char** argv)
 
 
 #endif
+
+
+#if SNIPPET047
+
+
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include <iostream>
+using namespace cv;
+using namespace std;
+Mat src_gray;
+int thresh = 100;
+RNG rng(12345);
+void thresh_callback(int, void*);
+
+int main(int argc, char** argv)
+{
+   
+    Mat src = imread("HappyFish.jpg");
+    if (src.empty())
+    {
+        cout << "Could not open or find the image!\n" << endl;
+        cout << "Usage: " << argv[0] << " <Input image>" << endl;
+        return -1;
+    }
+    cvtColor(src, src_gray, COLOR_BGR2GRAY);
+    blur(src_gray, src_gray, Size(3, 3));
+    const char* source_window = "Source";
+    namedWindow(source_window);
+    imshow(source_window, src);
+    const int max_thresh = 255;
+    createTrackbar("Canny thresh:", source_window, &thresh, max_thresh, thresh_callback);
+    thresh_callback(0, 0);
+    waitKey();
+    return 0;
+}
+void thresh_callback(int, void*)
+{
+    Mat canny_output;
+    Canny(src_gray, canny_output, thresh, thresh * 2);
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    findContours(canny_output, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        Scalar color = Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+        drawContours(drawing, contours, (int)i, color, 2, LINE_8, hierarchy, 0);
+    }
+    imshow("Contours", drawing);
+}
+
+
+#endif
+
+
+#if SNIPPET048
+
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include <iostream>
+using namespace cv;
+using namespace std;
+Mat src_gray;
+int thresh = 100;
+RNG rng(12345);
+void thresh_callback(int, void*);
+int main(int argc, char** argv)
+{
+    
+    Mat src = imread("stuff.jpg");
+    if (src.empty())
+    {
+        cout << "Could not open or find the image!\n" << endl;
+        cout << "Usage: " << argv[0] << " <Input image>" << endl;
+        return -1;
+    }
+    cvtColor(src, src_gray, COLOR_BGR2GRAY);
+    blur(src_gray, src_gray, Size(3, 3));
+    const char* source_window = "Source";
+    namedWindow(source_window);
+    imshow(source_window, src);
+    const int max_thresh = 255;
+    createTrackbar("Canny thresh:", source_window, &thresh, max_thresh, thresh_callback);
+    thresh_callback(0, 0);
+    waitKey();
+    return 0;
+}
+void thresh_callback(int, void*)
+{
+    Mat canny_output;
+    Canny(src_gray, canny_output, thresh, thresh * 2);
+    vector<vector<Point> > contours;
+    findContours(canny_output, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<vector<Point> >hull(contours.size());
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        convexHull(contours[i], hull[i]);
+    }
+    Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        Scalar color = Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+        drawContours(drawing, contours, (int)i, color);
+        drawContours(drawing, hull, (int)i, color);
+    }
+    imshow("Hull demo", drawing);
+}
+
+#endif
+
+
+#if SNIPPET049
+
+
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include <iostream>
+#include <iomanip>
+using namespace cv;
+using namespace std;
+Mat src_gray;
+int thresh = 100;
+RNG rng(12345);
+void thresh_callback(int, void*);
+int main(int argc, char** argv)
+{
+    
+    Mat src = imread("stuff.jpg");
+    if (src.empty())
+    {
+        cout << "Could not open or find the image!\n" << endl;
+        cout << "usage: " << argv[0] << " <Input image>" << endl;
+        return -1;
+    }
+    cvtColor(src, src_gray, COLOR_BGR2GRAY);
+    blur(src_gray, src_gray, Size(3, 3));
+    const char* source_window = "Source";
+    namedWindow(source_window);
+    imshow(source_window, src);
+    const int max_thresh = 255;
+    createTrackbar("Canny thresh:", source_window, &thresh, max_thresh, thresh_callback);
+    thresh_callback(0, 0);
+    waitKey();
+    return 0;
+}
+void thresh_callback(int, void*)
+{
+    Mat canny_output;
+    Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+    vector<vector<Point> > contours;
+    findContours(canny_output, contours, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    vector<Moments> mu(contours.size());
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        mu[i] = moments(contours[i]);
+    }
+    vector<Point2f> mc(contours.size());
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        //add 1e-5 to avoid division by zero
+        mc[i] = Point2f(static_cast<float>(mu[i].m10 / (mu[i].m00 + 1e-5)),
+            static_cast<float>(mu[i].m01 / (mu[i].m00 + 1e-5)));
+        cout << "mc[" << i << "]=" << mc[i] << endl;
+    }
+    Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        Scalar color = Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+        drawContours(drawing, contours, (int)i, color, 2);
+        circle(drawing, mc[i], 4, color, -1);
+    }
+    imshow("Contours", drawing);
+    cout << "\t Info: Area and Contour Length \n";
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+        cout << " * Contour[" << i << "] - Area (M_00) = " << std::fixed << std::setprecision(2) << mu[i].m00
+            << " - Area OpenCV: " << contourArea(contours[i]) << " - Length: " << arcLength(contours[i], true) << endl;
+    }
+}
+
+
+#endif
+
+
+#if SNIPPET050
+
+#include "opencv2/imgproc.hpp"
+#include "opencv2/highgui.hpp"
+#include <math.h>
+#include <iostream>
+
+using namespace cv;
+using namespace std;
+
+static void help()
+{
+    cout
+        << "\nThis program illustrates the use of findContours and drawContours\n"
+        << "The original image is put up along with the image of drawn contours\n"
+        << "Usage:\n"
+        << "./contours2\n"
+        << "\nA trackbar is put up which controls the contour level from -3 to 3\n"
+        << endl;
+}
+
+const int w = 500;
+int levels = 3;
+
+vector<vector<Point> > contours;
+vector<Vec4i> hierarchy;
+
+static void on_trackbar(int, void*)
+{
+    Mat cnt_img = Mat::zeros(w, w, CV_8UC3);
+    int _levels = levels - 3;
+    drawContours(cnt_img, contours, _levels <= 0 ? 3 : -1, Scalar(128, 255, 255),
+        3, LINE_AA, hierarchy, std::abs(_levels));
+
+    imshow("contours", cnt_img);
+}
+
+int main(int argc, char** argv)
+{
+    cv::CommandLineParser parser(argc, argv, "{help h||}");
+    if (parser.has("help"))
+    {
+        help();
+        return 0;
+    }
+    Mat img = Mat::zeros(w, w, CV_8UC1);
+    //Draw 6 faces
+    for (int i = 0; i < 6; i++)
+    {
+        int dx = (i % 2) * 250 - 30;
+        int dy = (i / 2) * 150;
+        const Scalar white = Scalar(255);
+        const Scalar black = Scalar(0);
+
+        if (i == 0)
+        {
+            for (int j = 0; j <= 10; j++)
+            {
+                double angle = (j + 5)*CV_PI / 21;
+                line(img, Point(cvRound(dx + 100 + j * 10 - 80 * cos(angle)),
+                    cvRound(dy + 100 - 90 * sin(angle))),
+                    Point(cvRound(dx + 100 + j * 10 - 30 * cos(angle)),
+                        cvRound(dy + 100 - 30 * sin(angle))), white, 1, 8, 0);
+            }
+        }
+
+        ellipse(img, Point(dx + 150, dy + 100), Size(100, 70), 0, 0, 360, white, -1, 8, 0);
+        ellipse(img, Point(dx + 115, dy + 70), Size(30, 20), 0, 0, 360, black, -1, 8, 0);
+        ellipse(img, Point(dx + 185, dy + 70), Size(30, 20), 0, 0, 360, black, -1, 8, 0);
+        ellipse(img, Point(dx + 115, dy + 70), Size(15, 15), 0, 0, 360, white, -1, 8, 0);
+        ellipse(img, Point(dx + 185, dy + 70), Size(15, 15), 0, 0, 360, white, -1, 8, 0);
+        ellipse(img, Point(dx + 115, dy + 70), Size(5, 5), 0, 0, 360, black, -1, 8, 0);
+        ellipse(img, Point(dx + 185, dy + 70), Size(5, 5), 0, 0, 360, black, -1, 8, 0);
+        ellipse(img, Point(dx + 150, dy + 100), Size(10, 5), 0, 0, 360, black, -1, 8, 0);
+        ellipse(img, Point(dx + 150, dy + 150), Size(40, 10), 0, 0, 360, black, -1, 8, 0);
+        ellipse(img, Point(dx + 27, dy + 100), Size(20, 35), 0, 0, 360, white, -1, 8, 0);
+        ellipse(img, Point(dx + 273, dy + 100), Size(20, 35), 0, 0, 360, white, -1, 8, 0);
+    }
+    //show the faces
+    namedWindow("image", 1);
+    imshow("image", img);
+    //Extract the contours so that
+    vector<vector<Point> > contours0;
+    findContours(img, contours0, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+    contours.resize(contours0.size());
+    for (size_t k = 0; k < contours0.size(); k++)
+        approxPolyDP(Mat(contours0[k]), contours[k], 3, true);
+
+    namedWindow("contours", 1);
+    createTrackbar("levels+3", "contours", &levels, 7, on_trackbar);
+
+    on_trackbar(0, 0);
+    waitKey();
+
+    return 0;
+}
+
+
+#endif
+
+#if SNIPPET051
+
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include <iostream>
+
+#define HUEMAX 179
+#define SATMAX 255
+#define VALMAX 255
+
+using namespace std;
+using namespace cv;
+
+Mat HSV;
+int H = 170;
+int S = 200;
+int V = 200;
+int R = 0;
+int G = 0;
+int B = 0;
+
+int MAX_H = 179;
+int MAX_S = 255;
+int MAX_V = 255;
+int mouse_x = 0;
+int mouse_y = 0;
+char window_name[20] = "HSV Color Plot";
+
+//Global variable for hsv color wheel plot
+int max_hue_range = 179;
+int max_step = 3; //nuber of pixel for each hue color
+int wheel_width = max_hue_range * max_step;
+int wheel_hight = 50;
+int wheel_x = 50; //x-position of wheel
+int wheel_y = 5;//y-position of wheel
+
+//Global variable plot for satuarion-value plot
+int S_V_Width = MAX_S;
+int S_V_Height = MAX_S;
+int S_V_x = 10;
+int S_V_y = wheel_y + wheel_hight + 20;
+
+//Global variable for HSV plot
+int HSV_Width = 150;
+int HSV_Height = 150;
+int HSV_x = S_V_x + S_V_Width + 30;
+int HSV_y = S_V_y + 50;
+
+
+void onTrackbar_changed(int, void*);
+static void onMouse(int event, int x, int y, int, void*);
+void drawPointers(void);
+
+int main()
+{
+    HSV.create(390, 640, CV_8UC3);
+    HSV.setTo(Scalar(200, 0, 200));
+
+    namedWindow(window_name);
+    createTrackbar("Hue", window_name, &H, HUEMAX, onTrackbar_changed);
+    createTrackbar("Saturation", window_name, &S, SATMAX, onTrackbar_changed);
+    createTrackbar("Value", window_name, &V, VALMAX, onTrackbar_changed);
+    onTrackbar_changed(0, 0); //initialize window
+
+    setMouseCallback(window_name, onMouse, 0);
+    while (true)
+    {
+        int c;
+        c = waitKey(20);
+        if ((char)c == 27)
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+void onTrackbar_changed(int, void*) {
+
+    //Plot color wheel.
+    int hue_range = 0;
+    int step = 1;
+    for (int i = wheel_y; i < wheel_hight + wheel_y; i++) {
+        hue_range = 0;
+        for (int j = wheel_x; j < wheel_width + wheel_x; j++) {
+            if (hue_range >= max_hue_range) hue_range = 0;
+            if (step++ == max_step) {
+                hue_range++;
+                step = 1;
+            }
+            Vec3b pix;
+            pix.val[0] = hue_range;
+            pix.val[1] = 255;
+            pix.val[2] = 255;
+
+
+            HSV.at<Vec3b>(i, j) = pix;
+
+        }
+    }
+
+
+    //Plot for saturation and value
+    int sat_range = 0;
+    int value_range = 255;
+    for (int i = S_V_y; i < S_V_Height + S_V_y; i++) {
+        value_range--;
+        sat_range = 0;
+        for (int j = S_V_x; j < S_V_Width + S_V_x; j++) {
+            Vec3b pix;
+            pix.val[0] = H;
+            pix.val[1] = sat_range++;
+            pix.val[2] = value_range;
+            HSV.at<Vec3b>(i, j) = pix;
+
+        }
+
+    }
+
+    //Plot for HSV
+    Mat roi1(HSV, Rect(HSV_x, HSV_y, HSV_Width, HSV_Height));
+    roi1 = Scalar(H, S, V);
+    drawPointers();
+
+    Mat RGB;
+    cvtColor(HSV, RGB, COLOR_HSV2BGR);
+
+    imshow(window_name, RGB);
+    imwrite("hsv.jpg", RGB);
+
+}
+
+static void onMouse(int event, int x, int y, int f, void*) {
+    if (f&EVENT_FLAG_LBUTTON) {
+        mouse_x = x;
+        mouse_y = y;
+        if (((wheel_x <= x) && (x <= wheel_x + wheel_width)) && ((wheel_y <= y) && (y <= wheel_y + wheel_hight))) {
+            H = (x - wheel_x) / max_step;
+            setTrackbarPos("Hue", window_name, H);
+        }
+        else if (((S_V_x <= x) && (x <= S_V_x + S_V_Width)) && ((S_V_y <= y) && (y <= S_V_y + S_V_Height))) {
+
+            S = x - S_V_x;
+            y = y - S_V_y;
+            V = 255 - y;
+
+            setTrackbarPos("Saturation", window_name, S);
+            setTrackbarPos("Value", window_name, V);
+        }
+
+    }
+
+}
+
+void drawPointers() {
+    // Point p(S_V_x+S,S_V_y+(255-V));
+    Point p(S, 255 - V);
+
+    int index = 10;
+    Point p1, p2;
+    p1.x = p.x - index;
+    p1.y = p.y;
+    p2.x = p.x + index;
+    p2.y = p.y;
+
+    Mat roi1(HSV, Rect(S_V_x, S_V_y, S_V_Width, S_V_Height));
+    line(roi1, p1, p2, Scalar(255, 255, 255), 1, LINE_AA, 0);
+    p1.x = p.x;
+    p1.y = p.y - index;
+    p2.x = p.x;
+    p2.y = p.y + index;
+    line(roi1, p1, p2, Scalar(255, 255, 255), 1, LINE_AA, 0);
+
+    int x_index = wheel_x + H * max_step;
+    if (x_index >= wheel_x + wheel_width) x_index = wheel_x + wheel_width - 2;
+    if (x_index <= wheel_x) x_index = wheel_x + 2;
+
+    p1.x = x_index;
+    p1.y = wheel_y + 1;
+    p2.x = x_index;
+    p2.y = wheel_y + 20;
+    line(HSV, p1, p2, Scalar(255, 255, 255), 2, LINE_AA, 0);
+
+    Mat RGB(1, 1, CV_8UC3);
+    Mat temp;
+    RGB = Scalar(H, S, V);
+    cvtColor(RGB, temp, COLOR_HSV2BGR);
+    Vec3b rgb = temp.at<Vec3b>(0, 0);
+    B = rgb.val[0];
+    G = rgb.val[1];
+    R = rgb.val[2];
+
+    Mat roi2(HSV, Rect(450, 130, 175, 175));
+    roi2 = Scalar(200, 0, 200);
+
+    char name[30];
+    sprintf(name, "R=%d", R);
+    putText(HSV, name, Point(460, 155), FONT_HERSHEY_SIMPLEX, .7, Scalar(5, 255, 255), 2, 8, false);
+
+    sprintf(name, "G=%d", G);
+    putText(HSV, name, Point(460, 180), FONT_HERSHEY_SIMPLEX, .7, Scalar(5, 255, 255), 2, 8, false);
+
+    sprintf(name, "B=%d", B);
+    putText(HSV, name, Point(460, 205), FONT_HERSHEY_SIMPLEX, .7, Scalar(5, 255, 255), 2, 8, false);
+
+
+    sprintf(name, "H=%d", H);
+    putText(HSV, name, Point(545, 155), FONT_HERSHEY_SIMPLEX, .7, Scalar(5, 255, 255), 2, 8, false);
+
+    sprintf(name, "S=%d", S);
+    putText(HSV, name, Point(545, 180), FONT_HERSHEY_SIMPLEX, .7, Scalar(5, 255, 255), 2, 8, false);
+
+    sprintf(name, "V=%d", V);
+    putText(HSV, name, Point(545, 205), FONT_HERSHEY_SIMPLEX, .7, Scalar(5, 255, 255), 2, 8, false);
+}
+
+#endif
+
+
+#if SNIPPET052
+
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include <iostream>
+
+using namespace std;
+using namespace cv;
+
+#define 	CV_FILLED   -1
+#define     CV_LOAD_IMAGE_GRAYSCALE  0
+
+vector<vector<Point> > contours; 
+vector<Vec4i> hierarchy; 
+vector<char> fillCtr; 
+Mat c;
+
+void DrawTree(int idx, int level)
+{
+    int i = idx;
+    if (level % 2 == 0)
+        drawContours(c, contours, i, Scalar(255, 0, 0), CV_FILLED);
+    else
+        drawContours(c, contours, i, Scalar(0, 255, 0), CV_FILLED);
+    fillCtr[i] = 1;
+    while (hierarchy[i][0] != -1)
+    {
+        int j = hierarchy[i][0];
+        if (fillCtr[j] == 0)
+        {
+            if (level % 2 == 0)
+                drawContours(c, contours, j, Scalar(255, 0, 0), CV_FILLED);
+            else
+                drawContours(c, contours, j, Scalar(0, 255, 0), CV_FILLED);
+            fillCtr[j] = 1;
+            DrawTree(j, level);
+        }
+        i = hierarchy[i][0];
+
+    }
+    if (hierarchy[idx][2] != -1)
+        DrawTree(hierarchy[idx][2], level + 1);
+}
+
+int main(int argc, char **argv)
+
+{
+    Mat x = imread("14415468805620458.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    imshow("original", x);
+    Mat y;
+    threshold(x, y, 50, 255, THRESH_BINARY);
+    imshow("threshold", y);
+    Mat yc;
+    findContours(y, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+    c = Mat::zeros(x.size(), CV_8UC3);
+    vector<Mat> plan = { x,x,x };
+    merge(plan, c);
+    cout << c.channels() << "\n";
+    fillCtr.resize(contours.size());
+    for (int i = 0; i < contours.size(); i++)
+    {
+        if (hierarchy[i][3] == -1 && fillCtr[i] == 0)
+        {
+            DrawTree(i, 0);
+        }
+    }
+
+    imshow("contour", c);
+    waitKey(0);
+}
+
+#endif
